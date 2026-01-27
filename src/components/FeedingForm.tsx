@@ -1,17 +1,27 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FeedingRecord } from '@/types/glucose';
 import { generateId } from '@/lib/glucose-utils';
-import { Utensils } from 'lucide-react';
+import { Utensils, CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FeedingFormProps {
   onSubmit: (record: FeedingRecord) => void;
 }
 
 export function FeedingForm({ onSubmit }: FeedingFormProps) {
+  const [date, setDate] = useState<Date>(new Date());
+  const [time, setTime] = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
   const [type, setType] = useState<'wet' | 'dry' | 'treat' | 'liquid'>('wet');
   const [amount, setAmount] = useState('');
   const [unit, setUnit] = useState<'spoon' | 'gram'>('gram');
@@ -24,9 +34,13 @@ export function FeedingForm({ onSubmit }: FeedingFormProps) {
     e.preventDefault();
     if (!isValid) return;
 
+    const [hours, minutes] = time.split(':').map(Number);
+    const timestamp = new Date(date);
+    timestamp.setHours(hours, minutes, 0, 0);
+
     const record: FeedingRecord = {
       id: generateId(),
-      timestamp: new Date(),
+      timestamp,
       type,
       amount: numericAmount,
       unit,
@@ -58,6 +72,48 @@ export function FeedingForm({ onSubmit }: FeedingFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* 날짜 및 시간 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-sm font-medium">날짜</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal mt-1.5",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "M월 d일 (EEE)", { locale: ko }) : "날짜 선택"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => d && setDate(d)}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div>
+            <Label htmlFor="feeding-time" className="text-sm font-medium">
+              시간
+            </Label>
+            <Input
+              id="feeding-time"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="mt-1.5"
+            />
+          </div>
+        </div>
+
         <div>
           <Label className="text-sm font-medium mb-2 block">사료 종류</Label>
           <div className="grid grid-cols-4 gap-2">
